@@ -1,0 +1,205 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// User model with role-based access
+enum UserRole {
+  STUDENT
+  TUTOR
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          UserRole  @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // OAuth accounts
+  accounts      Account[]
+  // Sessions for JWT
+  sessions      Session[]
+  
+  // Role-specific profiles
+  studentProfile StudentProfile?
+  tutorProfile   TutorProfile?
+  
+  // Common features
+  sentMessages     Message[]  @relation("MessageSender")
+  receivedMessages Message[]  @relation("MessageReceiver")
+  
+  // Student-specific relations
+  bookings         Booking[]  @relation("StudentBookings")
+  reviews          Review[]   @relation("StudentReviews")
+  
+  // Tutor-specific relations
+  tutorBookings    Booking[]  @relation("TutorBookings")
+  tutorReviews     Review[]   @relation("TutorReviews")
+  earnings         Earning[]
+}
+
+// OAuth account connections
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// Session management
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Student profile
+model StudentProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  bio         String?
+  grade       String?
+  subjects    String   // Comma-separated subjects student is interested in
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Tutor profile
+model TutorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  education     String?
+  experience    String?
+  hourlyRate    Float    @default(0)
+  subjects      String   // Comma-separated subjects tutor can teach
+  availability  String?  // JSON structure for availability slots stored as string
+  averageRating Float?   @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Booking/Session model
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  studentId   String
+  tutorId     String
+  subject     String
+  startTime   DateTime
+  endTime     DateTime
+  status      BookingStatus @default(PENDING)
+  isGroupSession Boolean    @default(false)
+  price       Float
+  notes       String?
+  meetingLink String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  student     User          @relation("StudentBookings", fields: [studentId], references: [id])
+  tutor       User          @relation("TutorBookings", fields: [tutorId], references: [id])
+  payment     Payment?
+  review      Review?
+}
+
+// Payment model
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  FAILED
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  amount        Float
+  currency      String        @default("USD")
+  status        PaymentStatus @default(PENDING)
+  paymentMethod String?
+  paymentId     String?       // External payment provider ID
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+// Tutor earnings
+model Earning {
+  id            String   @id @default(cuid())
+  tutorId       String
+  amount        Float
+  currency      String   @default("USD")
+  status        String   @default("PENDING") // PENDING, PAID
+  description   String?
+  createdAt     DateTime @default(now())
+  paidAt        DateTime?
+
+  tutor         User     @relation(fields: [tutorId], references: [id])
+}
+
+// Review model
+model Review {
+  id          String   @id @default(cuid())
+  bookingId   String   @unique
+  studentId   String
+  tutorId     String
+  rating      Int      // 1-5 stars
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  student     User     @relation("StudentReviews", fields: [studentId], references: [id])
+  tutor       User     @relation("TutorReviews", fields: [tutorId], references: [id])
+}
+
+// Message model for chat
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  sender      User     @relation("MessageSender", fields: [senderId], references: [id])
+  receiver    User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+}
