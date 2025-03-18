@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth/auth";
+import { authOptions } from "@/lib/auth/config";
+import { BookingStatus, UserRole } from "@prisma/client";
 
-// Define BookingStatus enum to match Prisma schema
-enum BookingStatus {
-  PENDING = "PENDING",
-  CONFIRMED = "CONFIRMED",
-  COMPLETED = "COMPLETED",
-  CANCELLED = "CANCELLED"
-}
 
 
 
@@ -18,7 +13,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await requireAuth();
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
     const userId = session.user.id;
     const bookingId = params.id;
     
@@ -58,7 +60,7 @@ export async function GET(
     
     // Check if user is authorized to view this booking
     if (
-      session.user.role !== "ADMIN" &&
+      session.user.role !== UserRole.ADMIN &&
       booking.studentId !== userId &&
       booking.tutorId !== userId
     ) {
@@ -92,7 +94,14 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await requireAuth();
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
     const userId = session.user.id;
     const bookingId = params.id;
     const body = await request.json();
@@ -116,7 +125,7 @@ export async function PATCH(
     // Check authorization based on the requested action
     if (status === BookingStatus.CONFIRMED) {
       // Only tutors can confirm bookings
-      if (session.user.role !== "TUTOR" || booking.tutorId !== userId) {
+      if (session.user.role !== UserRole.TUTOR || booking.tutorId !== userId) {
         return NextResponse.json(
           { error: "Only the assigned tutor can confirm bookings" },
           { status: 403 }
@@ -125,7 +134,7 @@ export async function PATCH(
     } else if (status === BookingStatus.CANCELLED) {
       // Both students and tutors can cancel their own bookings
       if (
-        session.user.role !== "ADMIN" &&
+        session.user.role !== UserRole.ADMIN &&
         booking.studentId !== userId &&
         booking.tutorId !== userId
       ) {
@@ -136,7 +145,7 @@ export async function PATCH(
       }
     } else if (status === BookingStatus.COMPLETED) {
       // Only tutors can mark bookings as completed
-      if (session.user.role !== "TUTOR" || booking.tutorId !== userId) {
+      if (session.user.role !== UserRole.TUTOR || booking.tutorId !== userId) {
         return NextResponse.json(
           { error: "Only the assigned tutor can complete bookings" },
           { status: 403 }

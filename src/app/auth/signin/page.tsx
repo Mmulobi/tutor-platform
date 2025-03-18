@@ -31,7 +31,25 @@ export default function SignIn() {
         return;
       }
 
-      router.push('/dashboard');
+      // Get user data from the database
+      const userResponse = await fetch('/api/auth/me');
+      const userData = await userResponse.json();
+
+      if (userData.error) {
+        setError('Error fetching user data');
+        setIsLoading(false);
+        return;
+      }
+
+      // Force a hard redirect based on role
+      const role = userData.role;
+      if (role === 'TUTOR') {
+        window.location.href = '/dashboard/tutor';
+      } else if (role === 'STUDENT') {
+        window.location.href = '/dashboard/student';
+      } else {
+        window.location.href = '/dashboard';
+      }
     } catch (error) {
       setError('An error occurred. Please try again.');
       setIsLoading(false);
@@ -149,7 +167,7 @@ export default function SignIn() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div>
                 <button
-                  onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+                  onClick={() => signIn('google', { redirect: true, callbackUrl: '/api/auth/role-redirect' })}
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                 >
                   <span className="sr-only">Sign in with Google</span>
@@ -161,7 +179,7 @@ export default function SignIn() {
 
               <div>
                 <button
-                  onClick={() => signIn('facebook', { callbackUrl: '/dashboard' })}
+                  onClick={() => signIn('facebook', { redirect: true, callbackUrl: '/api/auth/role-redirect' })}
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                 >
                   <span className="sr-only">Sign in with Facebook</span>

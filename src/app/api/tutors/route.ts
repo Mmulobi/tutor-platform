@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       where.tutorProfile = {
         ...where.tutorProfile,
         subjects: {
-          has: subject,
+          contains: subject,
         },
       };
     }
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         education: tutor.tutorProfile?.education,
         experience: tutor.tutorProfile?.experience,
         hourlyRate: tutor.tutorProfile?.hourlyRate,
-        subjects: tutor.tutorProfile?.subjects,
+        subjects: tutor.tutorProfile?.subjects?.split(',').map((subject: string) => subject.trim()) || [],
         averageRating: tutor.tutorProfile?.averageRating,
       },
     }));

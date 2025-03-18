@@ -217,6 +217,7 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             image: true,
+            role: true,
           },
         },
         receiver: {
@@ -224,10 +225,20 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             image: true,
+            role: true,
           },
         },
       },
     });
+
+    // Emit real-time message event through WebSocket
+    const io = (global as any).io;
+    if (io) {
+      io.to(receiverId).emit('receive-message', {
+        ...message,
+        createdAt: message.createdAt.toISOString(),
+      });
+    }
     
     return NextResponse.json(message, { status: 201 });
   } catch (error: any) {

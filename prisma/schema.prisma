@@ -42,12 +42,14 @@ model User {
   receivedMessages Message[]  @relation("MessageReceiver")
   
   // Student-specific relations
-  bookings         Booking[]  @relation("StudentBookings")
-  reviews          Review[]   @relation("StudentReviews")
+  bookings         Booking[]      @relation("StudentBookings")
+  studentSessions  TutorSession[] @relation("StudentSessions")
+  reviews          Review[]       @relation("StudentReviews")
   
   // Tutor-specific relations
-  tutorBookings    Booking[]  @relation("TutorBookings")
-  tutorReviews     Review[]   @relation("TutorReviews")
+  tutorBookings    Booking[]      @relation("TutorBookings")
+  tutorSessions    TutorSession[] @relation("TutorSessions")
+  tutorReviews     Review[]       @relation("TutorReviews")
   earnings         Earning[]
 }
 
@@ -85,8 +87,8 @@ model StudentProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
   bio         String?
-  grade       String?
-  subjects    String   // Comma-separated subjects student is interested in
+  interests   String?  // Student's academic interests
+  gradeLevel  String?  // Current grade level
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -110,14 +112,39 @@ model TutorProfile {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Booking/Session model
-enum BookingStatus {
-  PENDING
-  CONFIRMED
+// Session Status
+enum SessionStatus {
+  SCHEDULED
   COMPLETED
   CANCELLED
 }
 
+// Session model for tutoring sessions
+model Session {
+  id           String        @id @default(cuid())
+  studentId    String
+  tutorId      String
+  subject      String
+  scheduledFor DateTime
+  duration     Int          // Duration in minutes
+  status       SessionStatus @default(SCHEDULED)
+  meetingLink  String?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  student      User         @relation("StudentSessions", fields: [studentId], references: [id])
+  tutor        User         @relation("TutorSessions", fields: [tutorId], references: [id])
+  payment      Payment?
+  review       Review?
+
+  @@index([studentId])
+  @@index([tutorId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+// Booking model for legacy support
 model Booking {
   id          String        @id @default(cuid())
   studentId   String
@@ -125,7 +152,7 @@ model Booking {
   subject     String
   startTime   DateTime
   endTime     DateTime
-  status      BookingStatus @default(PENDING)
+  status      SessionStatus @default(SCHEDULED)
   isGroupSession Boolean    @default(false)
   price       Float
   notes       String?
@@ -149,7 +176,8 @@ enum PaymentStatus {
 
 model Payment {
   id            String        @id @default(cuid())
-  bookingId     String        @unique
+  sessionId     String?       @unique
+  bookingId     String?       @unique
   amount        Float
   currency      String        @default("USD")
   status        PaymentStatus @default(PENDING)
@@ -158,7 +186,8 @@ model Payment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  session       Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  booking       Booking?      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
 
 // Tutor earnings
@@ -177,18 +206,20 @@ model Earning {
 
 // Review model
 model Review {
-  id          String   @id @default(cuid())
-  bookingId   String   @unique
+  id          String        @id @default(cuid())
+  sessionId   String?       @unique
+  bookingId   String?       @unique
   studentId   String
   tutorId     String
-  rating      Int      // 1-5 stars
+  rating      Int          // 1-5 stars
   comment     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  student     User     @relation("StudentReviews", fields: [studentId], references: [id])
-  tutor       User     @relation("TutorReviews", fields: [tutorId], references: [id])
+  session     TutorSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  booking     Booking?      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  student     User          @relation("StudentReviews", fields: [studentId], references: [id])
+  tutor       User          @relation("TutorReviews", fields: [tutorId], references: [id])
 }
 
 // Message model for chat

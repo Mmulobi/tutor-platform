@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, BookingStatus } from "@prisma/client";
+import { BookingStatus } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth/auth";
 
 
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
     
     // Apply hourly rate from tutor's profile
     const hourlyRate = tutor.tutorProfile.hourlyRate;
-    const price = hourlyRate.toNumber() * durationHours;
+    const price = parseFloat(hourlyRate.toString()) * durationHours;
     
     // Create booking
     const booking = await prisma.booking.create({

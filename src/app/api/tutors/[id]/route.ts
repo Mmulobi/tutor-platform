@@ -45,29 +45,31 @@ export async function GET(
     
     // Clean up sensitive information
     const sanitizedTutor = {
-      id: tutor.id,
-      name: tutor.name,
-      image: tutor.image,
-      profile: {
-        bio: tutor.tutorProfile?.bio,
-        education: tutor.tutorProfile?.education,
-        experience: tutor.tutorProfile?.experience,
-        hourlyRate: tutor.tutorProfile?.hourlyRate,
-        subjects: tutor.tutorProfile?.subjects,
-        availability: tutor.tutorProfile?.availability,
-        averageRating: tutor.tutorProfile?.averageRating,
-      },
-      reviews: tutor.tutorReviews.map((review) => ({
-        id: review.id,
-        rating: review.rating,
-        comment: review.comment,
-        createdAt: review.createdAt,
-        student: {
-          id: review.student.id,
-          name: review.student.name,
-          image: review.student.image,
+      tutor: {
+        id: tutor.id,
+        name: tutor.name,
+        image: tutor.image,
+        profile: {
+          bio: tutor.tutorProfile?.bio,
+          education: tutor.tutorProfile?.education,
+          experience: tutor.tutorProfile?.experience,
+          hourlyRate: tutor.tutorProfile?.hourlyRate,
+          subjects: tutor.tutorProfile?.subjects?.split(',').map((subject: string) => subject.trim()) || [],
+          availability: tutor.tutorProfile?.availability,
+          averageRating: tutor.tutorProfile?.averageRating,
         },
-      })),
+        reviews: tutor.tutorReviews.map((review) => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          student: {
+            id: review.student.id,
+            name: review.student.name,
+            image: review.student.image,
+          },
+        })),
+      },
     };
     
     return NextResponse.json(sanitizedTutor);

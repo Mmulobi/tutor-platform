@@ -1,7 +1,7 @@
 import { PrismaClient, UserRole } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth/config";
 
 const prisma = new PrismaClient();
 
@@ -75,12 +75,14 @@ export async function registerUser(
       await prisma.studentProfile.create({
         data: {
           userId: user.id,
+          subjects: '', // Initialize with empty subjects string
         },
       });
     } else if (role === "TUTOR") {
       await prisma.tutorProfile.create({
         data: {
           userId: user.id,
+          subjects: '', // Initialize with empty subjects string
         },
       });
     }
